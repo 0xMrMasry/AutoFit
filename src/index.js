@@ -2,6 +2,8 @@ import PoseHandler from "./handlers/poseHandler";
 import TimerHandler from "./handlers/timerHandler";
 import ScoreHandler from "./handlers/scoreHandler";
 import SettingsHandler from "./handlers/settingsHandler";
+import QRCode from 'qrcode';
+import io from 'socket.io-client';
 
 document.addEventListener("DOMContentLoaded", async () => {
   let webcamElem = document.getElementById("webcamBox");
@@ -63,6 +65,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   const recordKeypointsBtnElem = document.getElementById("recordKeypointsBtn");
   const pingRecordElem = document.getElementById("pingRecordBox");
   const restartBtnElem = document.getElementById("restartBtn");
+
+  const sessionKeyElem = document.getElementById("sessionKey");
+  const qrCodeElem = document.getElementById("qrCode");
+  const retryBtnElem = document.getElementById("retryBtn");
 
   let isFirstPlay = true;
   let isWebcamSecPlay = false;
@@ -994,4 +1000,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     WOPose.isVideoMode = false;
     await WOPose.camHandler.start();
   });
+
+  const socket = io('http://localhost:3000');
+
+  const generateQRCode = (sessionKey) => {
+    QRCode.toCanvas(qrCodeElem, sessionKey, (error) => {
+      if (error) console.error(error);
+    });
+  };
+
+  const connectToServer = () => {
+    sessionKeyElem.innerText = 'Connecting...';
+    socket.emit('requestSessionKey');
+  };
+
+  socket.on('sessionKey', (sessionKey) => {
+    sessionKeyElem.innerText = sessionKey;
+    generateQRCode(sessionKey);
+  });
+
+  socket.on('connect_error', () => {
+    sessionKeyElem.innerText = 'Connection failed. Please try again.';
+  });
+
+  retryBtnElem.addEventListener('click', () => {
+    connectToServer();
+  });
+
+  connectToServer();
 });
